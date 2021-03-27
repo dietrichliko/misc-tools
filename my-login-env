@@ -1,0 +1,172 @@
+#!/bin/bash
+###############################################################################
+# Update my login environment
+#
+# Install
+#   - chezmoi
+#   - Bitwarden CLI
+#   - Github CLI
+#   - Poetry
+#
+# Configure
+#   - chezmoi
+#
+# Dietrich Liko, March 2021
+###############################################################################
+
+#set -x
+set -e
+set -o pipefail
+
+readonly INSTALL=~/.local
+readonly GITHUB_USER='dietrichliko'
+
+main() {
+
+
+    install_chezmoi
+    install_bw_cli
+    install_github_cli
+    install_poetry
+
+    if "${INSTALL}/bin/chezmoi" init "${GITHUB_USER}"; then
+        info "Success"
+        info "Now login to BW and apply chezmoi"
+    else
+        err "Failure to initialise chezmoi"
+        exit 1
+    fi
+
+}
+
+###############################################################################
+# Install/Update chezmoi (https://www.chezmoi.io/)
+###############################################################################
+install_chezmoi() {
+
+    info "Installing chezmoi"
+
+    if ! curl -sfL https://git.io/chezmoi | sh -s -- -b "${INSTALL}/bin"; then
+        err "Cannot install chezmoi"
+        exit 1
+    fi
+
+}
+
+###############################################################################
+# Install/Update Bitwarden CLI (https://github.com/bitwarden/cli)
+###############################################################################
+install_bw_cli() {
+
+    local url, version, zip_name, tmpfile, sha256
+    info "Installing Bitwarden CLI"
+
+    url="https://api.github.com/repos/bitwarden/cli/releases/latest"
+    if ! version=$(curl -sf "${url}" | grep -Po '"tag_name": "\K.*?(?=")'); then
+        err "Cannot determine latest version of Bitwarden CLI"
+        exit 1
+    fi
+    info "Found version ${version} for latest bw cli"
+    
+    url="https://github.com/bitwarden/cli/releases/download/${version}"
+    zip_name="bw-linux-${version:1}.zip"
+    chk_name="bw-linux-sha256-${version:1}.txt"
+
+    tmpfile=$(mktemp)
+    if ! curl -sL "${url}/${zip_name}" -o "${tmpfile}"; then
+        err "Cannot download ${zip_name}"
+        exit 1
+    fi
+    if ! sha256=$(curl -sfL "${url}/${chk_name}"); then
+        err "Cannot download ${chk_name}"
+        exit 1
+    fi
+    if ! echo "${sha256::-1}  ${tmpfile}" | sha256sum -c --status; then
+        err "Checksum failed for ${zip_name}"
+        exit 1
+    fi
+    if ! unzip -oqq "${tmpfile}" bw -d "${INSTALL}/bin"; then
+        err "Error unpacking bw"
+        exit 1
+    fi
+    chmod +x "${INSTALL}/bin/bw"
+    rm "${tmpfile}"
+    info "Installed ${INSTALL}/bin/bw"
+
+}
+
+###############################################################################
+# Install/Update Github CLI https://github.com/cli/cli
+###############################################################################
+install_github_cli() {
+
+    local url, version, tar_name, chk_name, tmpdir, name, 
+    info "Installing Github CLI"
+
+    url="https://api.github.com/repos/cli/cli/releases/latest"
+    if ! version=$(curl -s "${url}" | grep -Po '"tag_name": "\K.*?(?=")'); then
+        err "Cannot determine latest version of Github CLI"
+        exit 1
+    fi
+    info "Found version ${version} for latest github cli"
+    url="https://github.com/cli/cli/releases/download/${version}"
+    tar_name="gh_${version:1}_linux_amd64.tar.gz"
+    chk_name="gh_${version:1}_checksums.txt"
+
+    tmpdir=$(mktemp -d)
+    for name in "${tar_name}" "${chk_name}"; do
+        if ! curl -sL "${url}/${name}" -o "${tmpdir}/${name}"; then
+            err "Cannot download ${name}"
+            exit 1
+        fi
+    done
+    if ! curl -sfL "${url}/${chk_name}" -o "${tmpdir}/${chk_name}"; then
+        err "Cannot download ${chk_name}"
+        exit 1
+    fi
+    if ! (cd "${tmpdir}" && grep "${tar_name}" "${chk_name}" | sha256sum --status -c ); then
+        err "Checksum failed for ${tar_name}"
+        exit 1
+    fi
+    if ! tar zxf "${tmpdir}/${tar_name}" -C ${INSTALL} --strip-components 1; then
+        err "Error unpacking ${tar_name}"
+        exit 1
+    fi
+    rm -rf "${tmpdir}"
+    info "Installed ${INSTALL}/bin/gh"
+}
+
+###############################################################################
+# Install poetrty https://python-poetry.org
+###############################################################################
+install_poetry() {
+
+    if [[ -e ~/.poetry ]]; then
+        info "Updating Python poetry"
+        if ! poetry self update; then
+            err "Updatimng python poetry failed"
+        else
+            info "Python poetry has been updated"
+        fi
+    else
+        info "Installing Python poetry"
+        url="https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py"
+        if ! curl -sfL "${url}" | python - -y --no-modify-path; then
+            err "Cannot install poetry"
+            exit 1
+        fi
+        info "Installed poetry in ~/.local/bin/poetry"
+    fi
+    ln -sf "${POETRY_HOME:-~/.poetry}/bin/poetry" ~/.local/bin/poetry
+}
+
+###############################################################################
+info() {
+  echo "$(date +'%Y-%m-%d %H:%M:%S') - INFO - $*" >&2
+}
+
+err() {
+  echo "$(date +'%Y-%m-%d %H:%M:%S') - ERROR - $*" >&2
+}
+
+main "$@"
