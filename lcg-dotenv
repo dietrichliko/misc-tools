@@ -1,0 +1,81 @@
+#!/usr/bin/env python
+"""Setup local environment for a LCG_View. 
+
+Store the environment in  ".env". Optionally
+a virtual python environent can be created. 
+"""
+from __future__ import print_function
+from future.utils import iteritems
+
+import argparse
+import os
+import re
+import subprocess
+import sys
+
+parser = argparse.ArgumentParser(
+    description='Setup a local environment for a LCG_View, optionally with a python virtualenv.')
+
+parser.add_argument('--version',      action='store', default='LCG_99', 
+    help='LCG_View version (LCG_99)')
+parser.add_argument('--arch',         action='store', default='x86_64-centos7-gcc10-opt',
+    help='LCG_View archirecture (x86_64-centos7-gcc10-opt)')
+parser.add_argument('--venv',         action='store_true', default=False,
+    help='Optionally create a python virtual environmet')
+parser.add_argument('--venv-dir',     metavar='DIR', action='store', default='.venv',
+    help='Name of venv directory (.venv)')
+parser.add_argument('--venv-prompt',  metavar='PROMPT', action='store', default='',
+    help='Virtual env prompt (name of containing directory)')
+parser.add_argument('--env-file',     action='store', default='.env',
+    help='Name of file with environment variable settings (.env)')
+
+args = parser.parse_args()
+
+setup = os.path.join('/cvmfs/sft.cern.ch/lcg/views', args.version, args.arch, 'setup.sh')
+if not os.path.exists(setup):
+    print ( 'LCG_View {} for {} not found.'.format(args.version, args.architecture) ) 
+    sys.exit()
+
+re_line = re.compile('([A-Z0-9_]+)=(.*)')
+environ = {}
+for line in subprocess.check_output('source %s; env' % setup, shell=True).splitlines():
+    m = re_line.match(line.decode('utf-8'))
+    if not m: continue
+    name, value = m.groups()
+    if name in [ '_' ]: continue
+    if os.environ.get(name, None) == value: continue
+    environ[name] = value
+
+if args.venv:
+
+    venv = os.path.realpath(args.venv_dir)
+
+    if args.venv_prompt:
+        prompt = args.venv_prompt
+    else:
+        prompt = os.path.basename(os.path.dirname(venv))
+
+    subprocess.check_call([ 
+        '/usr/bin/env',
+        'PATH={0}'.format(environ['PATH']),
+        'PYTHONPATH={0}'.format(environ['PYTHONPATH']),
+        'python', '-m', 'venv', '--prompt', prompt, venv ])
+
+    with open( os.path.join(venv,'pyvenv.cfg'), 'r' ) as cfg_file:
+        cfg = { k: v for k,_,v in ( line.split() for line in cfg_file ) } 
+
+    site_packages = os.path.join( 
+        venv, 
+        'lib', 
+        'python{0}.{1}'.format( *cfg['version'].split('.')[:2] ),
+        'site-packages')
+
+    environ['PYTHONPATH'] = ':'.join([ site_packages, environ['PYTHONPATH'] ])
+
+with open(args.env_file, 'w') as env_file:
+    for key, value in iteritems(environ):
+        print ( '{0}="{1}"'.format(key, value), file=env_file )
+
+
+
+

@@ -23,7 +23,6 @@ readonly GITHUB_USER='dietrichliko'
 
 main() {
 
-
     install_chezmoi
     install_bw_cli
     install_github_cli
@@ -58,7 +57,7 @@ install_chezmoi() {
 ###############################################################################
 install_bw_cli() {
 
-    local url, version, zip_name, tmpfile, sha256
+    local url version zip_name tmpfile sha256
     info "Installing Bitwarden CLI"
 
     url="https://api.github.com/repos/bitwarden/cli/releases/latest"
@@ -100,7 +99,7 @@ install_bw_cli() {
 ###############################################################################
 install_github_cli() {
 
-    local url, version, tar_name, chk_name, tmpdir, name, 
+    local url version tar_name chk_name tmpdir name 
     info "Installing Github CLI"
 
     url="https://api.github.com/repos/cli/cli/releases/latest"
