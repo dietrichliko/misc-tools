@@ -30,7 +30,7 @@ main() {
 
     if "${INSTALL}/bin/chezmoi" init "${GITHUB_USER}"; then
         info "Success"
-        info "Now login to BW and apply chezmoi"
+        info "Now apply chezmoi"
     else
         err "Failure to initialise chezmoi"
         exit 1
@@ -156,7 +156,7 @@ install_poetry() {
         fi
         info "Installed poetry in ~/.local/bin/poetry"
     fi
-    ln -sf "${POETRY_HOME:-~/.poetry}/bin/poetry" ~/.local/bin/poetry
+    ln -sf "${POETRY_HOME:-${HOME}/.poetry}/bin/poetry" ~/.local/bin/poetry
 }
 
 ###############################################################################
