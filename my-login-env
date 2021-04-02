@@ -155,6 +155,7 @@ install_powerline_go() {
         err "Cannot download powerline-go"
         exit 1
     fi
+    chmod +x "${INSTALL}/libexec/powerline-go"
     info "Installed ${INSTALL}/libexec/powerline-go"
 }
 
