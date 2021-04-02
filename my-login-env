@@ -143,6 +143,7 @@ install_powerline_go() {
     local url version  
     info "Installing powerline-go"
 
+    mkdir "${INSTALL}/libexec"
     url="https://api.github.com/repos/justjanne/powerline-go/releases/latest"
     if ! version=$(curl -s "${url}" | grep -Po '"tag_name": "\K.*?(?=")'); then
         err "Cannot determine latest version of powerline-go"
@@ -150,7 +151,6 @@ install_powerline_go() {
     fi
     info "Found version ${version} for latest powerline-go"
     url="https://github.com/justjanne/powerline-go/releases/download/${version}/powerline-go-linux-amd64"
-
     if ! curl -sfL "${url}" -o "${INSTALL}/libexec/powerline-go"; then
         err "Cannot download powerline-go"
         exit 1
