@@ -26,7 +26,7 @@ main() {
     install_chezmoi
     install_bw_cli
     install_github_cli
-    install_poetry
+    install_powerline_go
 
     if "${INSTALL}/bin/chezmoi" init "${GITHUB_USER}"; then
         info "Success"
@@ -136,6 +136,29 @@ install_github_cli() {
 }
 
 ###############################################################################
+# Install powerline-go
+###############################################################################
+install_powerline_go() {
+
+    local url version  
+    info "Installing powerline-go"
+
+    url="https://api.github.com/repos/justjanne/powerline-go/releases/latest"
+    if ! version=$(curl -s "${url}" | grep -Po '"tag_name": "\K.*?(?=")'); then
+        err "Cannot determine latest version of powerline-go"
+        exit 1
+    fi
+    info "Found version ${version} for latest powerline-go"
+    url="https://github.com/justjanne/powerline-go/releases/download/${version}/powerline-go-linux-amd64"
+
+    if ! curl -sfL "${url}" -o "${INSTALL}/libexec/powerline-go"; then
+        err "Cannot download powerline-go"
+        exit 1
+    fi
+    info "Installed ${INSTALL}/libexec/powerline-go"
+}
+
+###############################################################################
 # Install poetrty https://python-poetry.org
 ###############################################################################
 install_poetry() {
@@ -158,6 +181,8 @@ install_poetry() {
     fi
     ln -sf "${POETRY_HOME:-${HOME}/.poetry}/bin/poetry" ~/.local/bin/poetry
 }
+
+
 
 ###############################################################################
 info() {
