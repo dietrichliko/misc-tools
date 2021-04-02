@@ -13,6 +13,18 @@ import re
 import subprocess
 import sys
 
+def escape(text):
+    """Very simple quoting for string in double quotes"""
+
+    tx = ""
+    for l in text:
+        if l in ['\', '$', '"' ] :
+            tx += '\' + l
+        else:
+            tx += l
+
+    return tx
+
 parser = argparse.ArgumentParser(
     description='Setup a local environment for a LCG_View, optionally with a python virtualenv.')
 
@@ -43,7 +55,10 @@ for line in subprocess.check_output('source %s; env' % setup, shell=True).splitl
     if not m: continue
     name, value = m.groups()
     if name in [ '_' ]: continue
-    if os.environ.get(name, None) == value: continue
+    try:
+        if os.environ[name].decode('utf-8') == value: continue
+    except KeyError:
+        pass
     environ[name] = value
 
 if args.venv:
